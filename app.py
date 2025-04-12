@@ -1,16 +1,14 @@
 import os
 from pydub import AudioSegment
 import time
+import subprocess
 
-# Set paths
-AudioSegment.converter = r"C:\ffmpeg\bin\ffmpeg.exe"
-AudioSegment.ffprobe = r"C:\ffmpeg\bin\ffprobe.exe"
-
-# Verify paths
-if not all(os.path.exists(p) for p in [AudioSegment.converter, AudioSegment.ffprobe]):
-    raise RuntimeError(f"FFmpeg or ffprobe not found: ffmpeg={AudioSegment.converter}, ffprobe={AudioSegment.ffprobe}")
-print(f"Successfully set ffmpeg: {AudioSegment.converter}")
-print(f"Successfully set ffprobe: {AudioSegment.ffprobe}")
+try:
+    subprocess.run(["ffmpeg", "-version"], check=True, capture_output=True)
+    subprocess.run(["ffprobe", "-version"], check=True, capture_output=True)
+    print("FFmpeg and ffprobe are installed and accessible")
+except subprocess.CalledProcessError as e:
+    raise RuntimeError("FFmpeg or ffprobe not found in system PATH") from e
 
 # Rest of imports
 import numpy as np
