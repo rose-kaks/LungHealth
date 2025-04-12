@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lung Health Diagnosis</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f0f2f5 0%, #e0e7ff 100%);
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+
+        .container:hover {
+            transform: translateY(-3px);
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .description {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            display: inline-block;
+            padding: 12px 24px; 
+            background: #e8f0fe;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .custom-file-upload:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem; 
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px; 
+            border: none;
+            border-radius: 8px; 
+            font-size: 1rem; 
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+            flex: 1;
+            min-width: 120px; 
+        }
+
+        button:hover {
+            background: #2563eb;
+            transform: scale(1.03);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #stopRecording {
+            background: #ef4444;
+        }
+
+        #stopRecording:hover {
+            background: #b91c1c;
+        }
+
+        #recordingStatus {
+            margin-top: 0.5rem;
+            font-size: 1rem; 
+            color: #3b82f6;
+            display: none;
+        }
+
+        #audioBar {
+            display: none;
+            height: 10px;
+            width: 0;
+            background: #3b82f6;
+            margin: 1rem auto;
+            border-radius: 5px;
+            animation: grow 0.5s infinite alternate;
+        }
+
+        @keyframes grow {
+            from { width: 0%; }
+            to { width: 80%; }
+        }
+
+        #result {
+            margin-top: 1.5rem;
+            font-size: 1.1rem; 
+            color: #333;
+            padding: 1rem; 
+            border-radius: 8px;
+            background: #ecfdf5;
+            display: none;
+        }
+
+        #error {
+            margin-top: 1.5rem; 
+            font-size: 1rem; 
+            color: #dc2626;
+            padding: 1rem; 
+            border-radius: 8px; 
+            background: #fef2f2;
+            display: none;
+        }
+
+        .spinner {
+            display: none;
+            margin: 1.5rem auto;
+            width: 32px;
+            height: 32px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 2rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .description {
+                font-size: 0.9rem;
+            }
+
+            button {
+                font-size: 0.9rem;
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lung Health Diagnosis</h1>
+        <p class="description">Upload or record a cough to check respiratory health.</p>
+        <div class="input-group">
+            <label for="audioFile" class="custom-file-upload">Choose Audio</label>
+            <input type="file" id="audioFile" accept="audio/*">
+        </div>
+        <div class="button-group">
+            <button id="recordCough" onclick="startRecording()">Record Cough</button>
+            <button id="stopRecording" onclick="stopRecording()" disabled>Stop</button>
+        </div>
+        <div id="recordingStatus"></div>
+        <div id="audioBar"></div> <!-- Added audio bar -->
+        <div class="spinner" id="spinner"></div>
+        <div id="result"></div>
+        <div id="error"></div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        const recordButton = document.getElementById('recordCough');
+        const stopButton = document.getElementById('stopRecording');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const audioBar = document.getElementById('audioBar'); // Added audio bar reference
+        const spinner = document.getElementById('spinner');
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+        const audioInput = document.getElementById('audioFile');
+
+        async function startRecording() {
+            try {
+                resetUI();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+                    predictCough(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                recordButton.disabled = true;
+                stopButton.disabled = false;
+                recordingStatus.innerText = 'Recording... (Cough now)';
+                recordingStatus.style.display = 'block';
+                audioBar.style.display = 'block'; // Show audio bar during recording
+            } catch (error) {
+                errorDiv.innerText = 'Microphone access denied or unavailable';
+                errorDiv.style.display = 'block';
+                console.error('Microphone error:', error);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordButton.disabled = false;
+                stopButton.disabled = true;
+                recordingStatus.style.display = 'none';
+                audioBar.style.display = 'none'; // Hide audio bar when stopped
+            }
+        }
+
+        function resetUI() {
+            resultDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            recordingStatus.style.display = 'none';
+            resultDiv.innerText = '';
+            errorDiv.innerText = '';
+            spinner.style.display = 'none';
+            recordButton.disabled = false;
+            stopButton.disabled = true;
+            audioInput.value = '';
+            audioBar.style.display = 'none'; // Ensure audio bar is hidden on reset
+        }
+
+        async function predictCough(audioBlob) {
+            if (!audioBlob) {
+                errorDiv.innerText = 'No audio provided';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            spinner.style.display = 'block';
+            recordButton.disabled = true;
+            stopButton.disabled = true;
+
+            const formData = new FormData();
+            formData.append('audio', audioBlob, audioBlob.name || 'recorded_cough.webm');
+
+            try {
+                resultDiv.innerText = 'Analyzing...';
+                resultDiv.style.display = 'block';
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                spinner.style.display = 'none';
+                recordButton.disabled = false;
+
+                if (response.ok) {
+                    resultDiv.innerText = `Prediction: ${result.label} (Probability: ${result.probability.toFixed(4)})`;
+                    resultDiv.style.display = 'block';
+                } else {
+                    errorDiv.innerText = result.error || 'Prediction failed';
+                    errorDiv.style.display = 'block';
+                    resultDiv.style.display = 'none';
+                }
+            } catch (error) {
+                spinner.style.display = 'none';
+                recordButton.disabled = false;
+                errorDiv.innerText = 'Server connection failed';
+                errorDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                console.error('Error:', error);
+            }
+        }
+
+        audioInput.addEventListener('change', () => {
+            const file = audioInput.files[0];
+            if (file) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!['wav', 'mp3', 'm4a', 'opus', 'ogg'].includes(ext)) {
+                    resetUI();
+                    errorDiv.innerText = 'Please upload a WAV, MP3, M4A, OPUS, or OGG file';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                predictCough(file);
+            }
+        });
+    </script>
+</body>
+</html>
